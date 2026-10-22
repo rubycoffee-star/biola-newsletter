@@ -6,6 +6,7 @@ const BRAND = {
   gradBlue: '#1D273B', // Grad Blue
   skyBlue: '#E2EFF8', // Sky Blue
   sycamore: '#E6E3D5', // Sycamore Bark (secondary)
+  cream: '#F7F5EF', // light tint of Sycamore Bark, for the intro panel
   slate: '#2F3E53', // Talbot East Slate (secondary)
 };
 
@@ -18,6 +19,8 @@ const HEADER_IMAGE =
   'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=1200&h=360&fit=crop&auto=format&fm=jpg&q=80';
 
 const TIME_ZONE = 'America/Los_Angeles';
+
+const THUMB_WIDTH = 150;
 
 function escapeHtml(text) {
   return String(text)
@@ -32,27 +35,44 @@ function formatDate(date, opts) {
   return date.toLocaleDateString('en-US', { timeZone: TIME_ZONE, ...opts });
 }
 
-function storyBlock(story, isLast) {
+// A thin rule between stories, inset to line up with the story text.
+const DIVIDER = `
+          <tr>
+            <td style="padding:0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td style="border-top:1px solid ${BRAND.sycamore};font-size:0;line-height:0;height:1px;">&nbsp;</td></tr>
+              </table>
+            </td>
+          </tr>`;
+
+function storyBlock(story) {
   const date = formatDate(story.date, { month: 'short', day: 'numeric', year: 'numeric' });
-  const border = isLast ? '' : `border-bottom:1px solid ${BRAND.sycamore};`;
+  const link = escapeHtml(story.link);
+  // Headline column, with the article's thumbnail beside it when one exists.
+  const thumbnail = story.image
+    ? `
+                  <td class="thumb" width="${THUMB_WIDTH}" valign="top" style="width:${THUMB_WIDTH}px;padding:4px 0 0 20px;">
+                    <a href="${link}"><img class="thumb-img" src="${escapeHtml(story.image)}" width="${THUMB_WIDTH}" alt="" style="display:block;width:${THUMB_WIDTH}px;max-width:${THUMB_WIDTH}px;height:auto;border:0;border-radius:4px;"></a>
+                  </td>`
+    : '';
   return `
           <tr>
-            <td style="padding:28px 40px;${border}">
-              <p style="margin:0 0 8px 0;font-family:${FONT_BODY};font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:${BRAND.red};">${escapeHtml(story.topic)}</p>
-              <h2 style="margin:0 0 8px 0;font-family:${FONT_HEADLINE};font-size:21px;line-height:1.3;font-weight:bold;color:${BRAND.black};">
-                <a href="${escapeHtml(story.link)}" style="color:${BRAND.black};text-decoration:none;">${escapeHtml(story.headline)}</a>
-              </h2>
-              <p style="margin:0 0 12px 0;font-family:${FONT_BODY};font-size:13px;color:${BRAND.slate};">
-                <strong>${escapeHtml(story.source)}</strong> &nbsp;&middot;&nbsp; ${escapeHtml(date)}
-              </p>
-              <p style="margin:0 0 16px 0;font-family:${FONT_BODY};font-size:15px;line-height:1.6;color:#333333;">${escapeHtml(story.summary)}</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <td style="padding:36px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="background-color:${BRAND.red};border-radius:3px;">
-                    <a href="${escapeHtml(story.link)}" style="display:inline-block;padding:10px 20px;font-family:${FONT_BODY};font-size:13px;font-weight:bold;letter-spacing:0.5px;color:${BRAND.white};text-decoration:none;">Read more &rarr;</a>
-                  </td>
+                  <td class="story-text" valign="top">
+                    <p style="margin:0 0 10px 0;font-family:${FONT_BODY};font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:${BRAND.red};">${escapeHtml(story.topic)}</p>
+                    <h2 style="margin:0 0 10px 0;font-family:${FONT_HEADLINE};font-size:20px;line-height:1.3;font-weight:bold;color:${BRAND.black};">
+                      <a href="${link}" style="color:${BRAND.black};text-decoration:none;">${escapeHtml(story.headline)}</a>
+                    </h2>
+                    <p style="margin:0;font-family:${FONT_BODY};font-size:13px;color:${BRAND.slate};">
+                      <strong>${escapeHtml(story.source)}</strong> &nbsp;&middot;&nbsp; ${escapeHtml(date)}
+                    </p>
+                  </td>${thumbnail}
                 </tr>
               </table>
+              <p style="margin:16px 0 14px 0;font-family:${FONT_BODY};font-size:15px;line-height:1.65;color:#333333;">${escapeHtml(story.summary)}</p>
+              <a href="${link}" style="font-family:${FONT_BODY};font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:${BRAND.red};text-decoration:none;">Read more&nbsp;&rarr;</a>
             </td>
           </tr>`;
 }
@@ -60,7 +80,7 @@ function storyBlock(story, isLast) {
 function buildNewsletter(stories, now = new Date()) {
   const today = formatDate(now, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const subject = `The Daily Grind — ${formatDate(now, { month: 'long', day: 'numeric', year: 'numeric' })}`;
-  const storiesHtml = stories.map((s, i) => storyBlock(s, i === stories.length - 1)).join('');
+  const storiesHtml = stories.map(storyBlock).join(DIVIDER);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -68,6 +88,14 @@ function buildNewsletter(stories, now = new Date()) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(subject)}</title>
+  <style>
+    /* Phones: stack each story's thumbnail under its headline at full width. */
+    @media only screen and (max-width: 480px) {
+      .thumb { display: block !important; width: 100% !important; padding: 16px 0 0 0 !important; }
+      .thumb-img { width: 100% !important; max-width: 100% !important; }
+      .story-text { display: block !important; width: 100% !important; }
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;background-color:${BRAND.sycamore};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sycamore};">
@@ -100,8 +128,8 @@ function buildNewsletter(stories, now = new Date()) {
 
           <!-- Intro -->
           <tr>
-            <td style="padding:32px 40px 8px 40px;background-color:${BRAND.skyBlue};">
-              <p style="margin:0 0 24px 0;font-family:${FONT_BODY};font-size:16px;line-height:1.65;color:${BRAND.gradBlue};">
+            <td style="padding:32px 40px;background-color:${BRAND.cream};border-bottom:1px solid ${BRAND.sycamore};">
+              <p style="margin:0;font-family:${FONT_BODY};font-size:16px;line-height:1.7;color:${BRAND.gradBlue};">
                 Good morning! Here are this week's top stories from across the coffee world — with an eye on the farmers who grow it, the communities that depend on it, and the businesses working to source it fairly and sustainably. Pour a cup and read on.
               </p>
             </td>

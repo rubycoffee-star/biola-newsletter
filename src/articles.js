@@ -56,8 +56,8 @@ function decodeEntities(text) {
   });
 }
 
-// Find <meta property="og:description"> or <meta name="description">, in any attribute order.
-function findMetaDescription(html) {
+// Collect <meta property|name="..." content="..."> tags, in any attribute order.
+function readMetaTags(html) {
   const metas = {};
   for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
     const attrs = {};
@@ -67,7 +67,7 @@ function findMetaDescription(html) {
     const key = (attrs.property || attrs.name || '').toLowerCase();
     if (attrs.content && !(key in metas)) metas[key] = attrs.content;
   }
-  return metas['og:description'] || metas.description || '';
+  return metas;
 }
 
 // Keep the first one or two sentences, capped at a newsletter-friendly length.
@@ -88,21 +88,40 @@ function normalize(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-// Returns a 1–2 sentence summary from the article's meta description, or null if none is usable.
-async function getArticleSummary(articleUrl, headline) {
+// Only use an og:image that actually loads as an image, so the email never shows a broken picture.
+async function findImage(metas, articleUrl) {
+  const raw = metas['og:image'] || metas['og:image:url'] || metas['og:image:secure_url'];
+  if (!raw) return null;
   try {
-    const html = await fetchText(articleUrl);
-    const description = findMetaDescription(html);
-    if (!description) return null;
-
-    const summary = toShortSummary(description);
-    // Skip descriptions that are too thin or just repeat the headline.
-    if (summary.length < 40 || normalize(summary) === normalize(headline)) return null;
-    return summary;
-  } catch (err) {
-    console.warn(`No summary for "${headline}": ${err.message}`);
+    const imageUrl = new URL(decodeEntities(raw).trim(), articleUrl).href;
+    if (!/^https?:/.test(imageUrl)) return null;
+    const res = await fetch(imageUrl, {
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    res.body?.cancel();
+    return res.ok && (res.headers.get('content-type') || '').startsWith('image/') ? imageUrl : null;
+  } catch {
     return null;
   }
 }
 
-module.exports = { resolveGoogleNewsUrl, getArticleSummary };
+// Returns { summary, image } from the article's meta tags. Either may be null if not usable.
+async function getArticleDetails(articleUrl, headline) {
+  try {
+    const html = await fetchText(articleUrl);
+    const metas = readMetaTags(html);
+    const description = metas['og:description'] || metas.description || '';
+
+    let summary = description ? toShortSummary(description) : null;
+    // Skip descriptions that are too thin or just repeat the headline.
+    if (summary && (summary.length < 40 || normalize(summary) === normalize(headline))) summary = null;
+
+    return { summary, image: await findImage(metas, articleUrl) };
+  } catch (err) {
+    console.warn(`No details for "${headline}": ${err.message}`);
+    return { summary: null, image: null };
+  }
+}
+
+module.exports = { resolveGoogleNewsUrl, getArticleDetails };

@@ -1,5 +1,5 @@
 const Parser = require('rss-parser');
-const { resolveGoogleNewsUrl, getArticleSummary } = require('./articles');
+const { resolveGoogleNewsUrl, getArticleDetails } = require('./articles');
 
 const parser = new Parser({
   timeout: 15000,
@@ -117,8 +117,9 @@ async function getTopStories() {
         console.warn(`Could not resolve publisher link for "${story.headline}": ${err.message}`);
         return;
       }
-      const summary = await getArticleSummary(story.link, story.headline);
+      const { summary, image } = await getArticleDetails(story.link, story.headline);
       if (summary) story.summary = summary;
+      story.image = image;
     })
   );
   return unique;
