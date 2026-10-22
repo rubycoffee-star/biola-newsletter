@@ -1,0 +1,26 @@
+{
+  "name": "biola-newsletter",
+  "version": "1.0.0",
+  "description": "The Daily Grind: one-click coffee news newsletter for Biola University",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rubycoffee-star/biola-newsletter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rubycoffee-star/biola-newsletter/issues"
+  },
+  "homepage": "https://github.com/rubycoffee-star/biola-newsletter#readme",
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "nodemailer": "^10.2.1",
+    "rss-parser": "^3.13.0"
+  }
+}

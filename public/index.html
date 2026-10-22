@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Daily Grind | Biola University</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700&display=swap" rel="stylesheet">
+  <style>
+    /* Biola University brand: biola.edu/brand/toolkits-standards/visual-design */
+    :root {
+      --biola-red: #CC1122;
+      --black: #000000;
+      --white: #FFFFFF;
+      --grad-blue: #1D273B;
+      --sky-blue: #E2EFF8;
+      --sycamore: #E6E3D5;
+      --slate: #2F3E53;
+      --font-body: Gotham, 'Proxima Nova', Helvetica, Arial, sans-serif;
+      --font-headline: 'League Spartan', Gotham, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--sycamore);
+      color: var(--black);
+      font-family: var(--font-body);
+    }
+    .brand-bar {
+      background: var(--biola-red);
+      color: var(--white);
+      padding: 14px 24px;
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .card {
+      background: var(--white);
+      width: 100%;
+      max-width: 560px;
+      border-top: 6px solid var(--biola-red);
+      padding: 44px 40px;
+      box-shadow: 0 10px 30px rgba(29, 39, 59, 0.12);
+    }
+    h1 {
+      font-family: var(--font-headline);
+      font-weight: 700;
+      font-size: 46px;
+      line-height: 1.05;
+      margin: 0;
+    }
+    .tagline {
+      color: var(--biola-red);
+      font-weight: bold;
+      font-size: 17px;
+      margin: 10px 0 20px;
+    }
+    .description {
+      color: var(--slate);
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 0 0 32px;
+    }
+    button {
+      width: 100%;
+      padding: 18px 24px;
+      border: none;
+      border-radius: 4px;
+      background: var(--biola-red);
+      color: var(--white);
+      font-family: var(--font-body);
+      font-size: 17px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: #A90E1C; }
+    button:disabled { opacity: 0.8; cursor: wait; }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.4);
+      border-top-color: var(--white);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status {
+      margin-top: 24px;
+      padding: 16px 18px;
+      border-radius: 4px;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .status.success { background: var(--sky-blue); color: var(--grad-blue); border-left: 5px solid var(--grad-blue); }
+    .status.error { background: #FBE7E9; color: #7A0A14; border-left: 5px solid var(--biola-red); }
+    .preview-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: var(--slate);
+      font-size: 14px;
+    }
+    footer {
+      background: var(--black);
+      color: #BBBBBB;
+      text-align: center;
+      padding: 18px;
+      font-size: 13px;
+    }
+    @media (max-width: 480px) {
+      .card { padding: 32px 24px; }
+      h1 { font-size: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand-bar">Biola University</div>
+  <main>
+    <div class="card">
+      <h1>The Daily Grind</h1>
+      <p class="tagline">Coffee Business News with Purpose</p>
+      <p class="description">
+        One click gathers the latest coffee industry news on fair trade, sustainability, and coffee farmers, builds a newsletter, and emails it to you.
+      </p>
+      <button id="send-btn" type="button">Generate &amp; Send Newsletter</button>
+      <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+      <a class="preview-link" href="/preview" target="_blank">Preview without sending</a>
+    </div>
+  </main>
+  <footer>&ldquo;Do justice, love kindness, and walk humbly with your God.&rdquo; &mdash; Micah 6:8</footer>
+
+  <script>
+    const button = document.getElementById('send-btn');
+    const statusBox = document.getElementById('status');
+
+    function showStatus(type, message) {
+      statusBox.className = `status ${type}`;
+      statusBox.textContent = message;
+      statusBox.hidden = false;
+    }
+
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner"></span> Brewing your newsletter…';
+      statusBox.hidden = true;
+
+      try {
+        const res = await fetch('/api/send', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || `Server error (${res.status})`);
+        showStatus('success', `✅ Sent! "${data.subject}" with ${data.storyCount} stories is on its way to ${data.sentTo}.`);
+      } catch (err) {
+        showStatus('error', `❌ Something went wrong: ${err.message}`);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Generate & Send Newsletter';
+      }
+    });
+  </script>
+</body>
+</html>
